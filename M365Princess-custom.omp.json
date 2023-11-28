@@ -2,13 +2,16 @@
   "$schema": "https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/schema.json",
   "palette": {
     "black": "#000000",
-    "tan": "#CC3802",
-    "teal": "#047E84",
-    "plum": "#9A348E",
     "blush": "#DA627D",
+    "php": "#7A86B8",
+    "plum": "#9A348E",
+    "red": "#CD0505",
     "salmon": "#FCA17D",
     "sky": "#86BBD8",
-    "teal_blue": "#33658A"
+    "tan": "#CC3802",
+    "teal_blue": "#33658A",
+    "teal": "#047E84",
+    "white": "#FFFFFF"
   },
   "blocks": [
     {
@@ -81,11 +84,22 @@
         },
         {
           "background": "p:sky",
+          "display_mode": "files",
+          "fetch_package_manager": true,
           "foreground": "p:black",
+          "missing_command_text": "nodejs not found",
           "powerline_symbol": "\ue0b0",
           "style": "powerline",
           "template": " \ue718 {{ if .PackageManagerIcon }}{{ .PackageManagerIcon }} {{ end }}{{ .Full }} ",
           "type": "node"
+        },
+        {
+          "type": "php",
+          "style": "powerline",
+          "powerline_symbol": "",
+          "foreground": "p:black",
+          "background": "p:php",
+          "template": " \ue73d {{ .Full }} "
         },
         {
           "background": "p:teal_blue",
@@ -97,6 +111,12 @@
           "template": " \u2665 {{ .CurrentDate | date .Format }} ",
           "trailing_diamond": "\ue0b0",
           "type": "time"
+        },
+        {
+          "type": "upgrade",
+          "style": "plain",
+          "foreground": "p:white",
+          "background": "p:red"
         }
       ],
       "type": "prompt"
