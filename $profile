@@ -1,5 +1,6 @@
 # OhMyPosh
-oh-my-posh init pwsh --config 'C:\ZZ_Okticket\custom-configs\M365Princess-custom.omp.json' | Invoke-Expression
+# oh-my-posh init pwsh --config 'C:\ZZ_Okticket\custom-configs\M365Princess-custom.omp.json' | Invoke-Expression
+oh-my-posh init pwsh --config 'https://raw.githubusercontent.com/javilaurin/custom-configs/master/M365Princess-custom.omp.json' | Invoke-Expression
 # oh-my-posh init pwsh --config 'https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/catppuccin.omp.json' | Invoke-Expression
 # oh-my-posh init pwsh --config 'https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/M365Princess.omp.json' | Invoke-Expression
 # oh-my-posh init pwsh --config 'https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/agnoster.omp.json' | Invoke-Expression
@@ -12,6 +13,6 @@ Import-Module -Name Terminal-Icons
 
 # PSReadLine for autocomplete
 Import-Module PSReadLine
-Set-PSReadLineOption -PredictionSource History
+Set-PSReadLineOption -PredictionSource HistoryAndPlugin
 Set-PSReadLineOption -PredictionViewStyle ListView
 Set-PSReadLineOption -EditMode Windows
