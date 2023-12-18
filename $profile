@@ -16,3 +16,6 @@ Import-Module PSReadLine
 Set-PSReadLineOption -PredictionSource HistoryAndPlugin
 Set-PSReadLineOption -PredictionViewStyle ListView
 Set-PSReadLineOption -EditMode Windows
+
+Set-Alias -Name grep -Value Select-String
+
