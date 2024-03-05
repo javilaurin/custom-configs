@@ -3,6 +3,7 @@
   "palette": {
     "black": "#000000",
     "blush": "#DA627D",
+    "green": "#338a50",
     "php": "#7A86B8",
     "plum": "#9A348E",
     "red": "#CD0505",
@@ -11,7 +12,8 @@
     "tan": "#CC3802",
     "teal_blue": "#33658A",
     "teal": "#047E84",
-    "white": "#FFFFFF"
+    "white": "#FFFFFF",
+    "yellow": "#ffdc51"
   },
   "blocks": [
     {
@@ -102,8 +104,16 @@
           "template": " \ue73d {{ .Full }} "
         },
         {
+          "type": "python",
+          "style": "powerline",
+          "powerline_symbol": "\ue0b0",
+          "foreground": "p:yellow",
           "background": "p:teal_blue",
-          "foreground": "p:black",
+          "template": " \ue606 {{ .Full }} "
+        },
+        {
+          "background": "p:green",
+          "foreground": "p:white",
           "properties": {
             "time_format": "15:04"
           },
