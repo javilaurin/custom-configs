@@ -1,0 +1,18 @@
+{
+	"bootstrapped": true,
+	"in_process_packages":
+	[
+	],
+	"installed_packages":
+	[
+		"Advanced CSV",
+		"Compare Side-By-Side",
+		"Dockerfile Syntax Highlighting",
+		"Gremlins",
+		"Package Control",
+		"PowerShell",
+		"Pretty JSON",
+		"SortBy",
+		"SublimeLinter-contrib-Powershell",
+	],
+}
