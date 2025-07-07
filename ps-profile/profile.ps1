@@ -1,6 +1,7 @@
 # OhMyPosh
-oh-my-posh init pwsh --config 'D:\custom-configs\M365Princess-custom.omp.json' | Invoke-Expression
-# oh-my-posh init pwsh --config 'https://raw.githubusercontent.com/javilaurin/custom-configs/master/M365Princess-custom.omp.json' | Invoke-Expression
+# oh-my-posh init pwsh --config 'D:\custom-configs\M365Princess-custom.omp.json' | Invoke-Expression #LOCAL
+oh-my-posh init pwsh --config 'https://raw.githubusercontent.com/javilaurin/custom-configs/master/M365Princess-custom.omp.json' | Invoke-Expression # REMOTE
+
 # oh-my-posh init pwsh --config 'https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/catppuccin.omp.json' | Invoke-Expression
 # oh-my-posh init pwsh --config 'https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/M365Princess.omp.json' | Invoke-Expression
 # oh-my-posh init pwsh --config 'https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/agnoster.omp.json' | Invoke-Expression
@@ -21,6 +22,31 @@ Set-PSReadLineOption -EditMode Windows
 
 Set-Alias -Name grep -Value Select-String
 
+# Set $DEVHOME env variable pointing to the current user base git repositories folder
+if (-not $env:DEVHOME) {
+  if (Test-Path -Path 'D:\okt-api') {
+    $env:DEVHOME = 'D:\'
+  }
+  elseif (Test-Path -Path 'C:\Users\javilaurin\Proyectos') {
+    $env:DEVHOME = 'C:\Users\javilaurin\Proyectos'
+  }
+  else {
+    Write-Warning 'DEVHOME environment variable not set. Please set it to your development home directory.'
+  }
+}
+
+# Check if DEVHOME is set and perform backups
+if ($env:DEVHOME) {
+  Write-Host "DEVHOME is set to: $($env:DEVHOME)"
+  if (Test-Path -Path "$env:DEVHOME\custom-configs") {
+    # Write-Host 'Performing custom-configs backup';
+    . "$env:DEVHOME\custom-configs\backup-all-tools.ps1"
+  }
+}
+else {
+  Write-Warning 'DEVHOME environment variable is not set. Please set it to your development home directory.'
+}
+
 # Autocomplete hostnames
 function Get-SSHHost($sshConfigPath) {
   Get-Content -Path $sshConfigPath `
@@ -38,9 +64,9 @@ Register-ArgumentCompleter -CommandName 'ssh', 'scp', 'sftp' -Native -ScriptBloc
   param($wordToComplete, $commandAst, $cursorPosition)
 
   $hosts = Get-Content -Path "${sshPath}\config" `
-    | Select-String -Pattern '^Include ' `
-    | ForEach-Object { $_ -replace 'Include ', '' } `
-    | ForEach-Object { Get-SSHHost "${sshPath}/$_" }
+  | Select-String -Pattern '^Include ' `
+  | ForEach-Object { $_ -replace 'Include ', '' } `
+  | ForEach-Object { Get-SSHHost "${sshPath}/$_" }
 
   $hosts += Get-SSHHost "${sshPath}\config"
   $hosts = $hosts | Sort-Object -Unique
