@@ -74,7 +74,7 @@ Register-ArgumentCompleter -CommandName 'ssh', 'scp', 'sftp' -Native -ScriptBloc
   $hosts | Where-Object { $_ -like "${wordToComplete}*" } | ForEach-Object { $_ }
 }
 
-#
+# failed trials and bits
 
 # Register-EngineEvent PowerShell.OnIdle -Action {
 #   $cwd = Get-Location
