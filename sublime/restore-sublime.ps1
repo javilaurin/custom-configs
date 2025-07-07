@@ -7,4 +7,4 @@ Get-ChildItem -Path $sourceFolder -File | ForEach-Object {
     Copy-Item -Path $_.FullName -Destination ($backupFolder + "\" + $_.Name) -Force
 }
 
-Write-Host "Finished restoring files"
+Write-Host "Finished restoring files. Remember to install Package Control manually"
