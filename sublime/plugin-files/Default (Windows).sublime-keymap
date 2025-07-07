@@ -1,3 +1,4 @@
 [
+	{ "keys": ["ctrl+shift+alt+l"], "command": "split_selection_into_lines" },
 	{ "keys": ["ctrl+alt+j"], "command": "pretty_json" }
 ]
