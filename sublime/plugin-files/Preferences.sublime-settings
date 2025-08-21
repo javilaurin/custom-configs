@@ -5,4 +5,5 @@
 	],
 	"font_size": 12,
 	"index_files": true,
+	"word_wrap": "false",
 }
