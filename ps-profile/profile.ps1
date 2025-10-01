@@ -22,6 +22,10 @@ Set-PSReadLineOption -EditMode Windows
 
 Set-Alias -Name grep -Value Select-String
 
+$sshPath = "${env:USERPROFILE}\.ssh"
+$ssmPath = "${env:USERPROFILE}\.aws"
+$ssmCacheFile = Join-Path -Path $ssmPath -ChildPath 'ssm-cache.json'
+
 # Set $DEVHOME env variable pointing to the current user base git repositories folder
 if (-not $env:DEVHOME) {
   if (Test-Path -Path 'D:\okt-api') {
@@ -57,7 +61,6 @@ function Get-SSHHost($sshConfigPath) {
   | Select-String -Pattern '^.*[*!?].*$' -NotMatch
 }
 
-$sshPath = "${env:USERPROFILE}\.ssh"
 
 # Argument completion
 Register-ArgumentCompleter -CommandName 'ssh', 'scp', 'sftp' -Native -ScriptBlock {
@@ -74,6 +77,161 @@ Register-ArgumentCompleter -CommandName 'ssh', 'scp', 'sftp' -Native -ScriptBloc
   $hosts | Where-Object { $_ -like "${wordToComplete}*" } | ForEach-Object { $_ }
 }
 
+# SSM
+# =============================================================================
+# AWS SSM Session Manager Helper Functions
+# =============================================================================
+
+function Update-SsmCache {
+  <#
+    .SYNOPSIS
+        Queries all AWS regions for instances in ANY state and builds a local cache file.
+    #>
+  Write-Host -ForegroundColor Cyan '🔎 Starting AWS instance cache update...'
+
+  if (-not (Test-Path $ssmPath)) {
+    New-Item -ItemType Directory -Path $ssmPath | Out-Null
+  }
+
+  $regions = (aws ec2 describe-regions --query 'Regions[].RegionName' --output text) -split '\s+'
+
+  $instanceData = $regions | ForEach-Object -Parallel {
+    $region = $_
+        
+    # --- CHANGE: Removed the state filter to fetch instances in ALL states ---
+    # It still filters for instances that have a 'Name' tag to keep the list relevant.
+    $awsCliArgs = @('ec2', 'describe-instances', '--region', $region, '--filters', 'Name=tag-key,Values=Name', '--output', 'json')
+        
+    $jsonData = (aws @awsCliArgs) | ConvertFrom-Json
+        
+    if ($null -ne $jsonData.Reservations) {
+      foreach ($reservation in $jsonData.Reservations) {
+        foreach ($instance in $reservation.Instances) {
+          $nameTag = ($instance.Tags | Where-Object { $_.Key -eq 'Name' }).Value
+                    
+          Write-Output ([PSCustomObject]@{
+              InstanceId       = $instance.InstanceId
+              Name             = $nameTag.Trim()
+              PrivateIpAddress = $instance.PrivateIpAddress
+              AvailabilityZone = $instance.Placement.AvailabilityZone
+              Region           = $region
+              State            = $instance.State.Name
+            })
+        }
+      }
+    }
+  }
+
+  $instanceData | Sort-Object -Property Name | ConvertTo-Json | Set-Content -Path $ssmCacheFile
+    
+  Write-Host -ForegroundColor Green "✅ Cache updated successfully with $($instanceData.Count) instances."
+}
+
+function ssm {
+    <#
+    .SYNOPSIS
+        Connects to a running EC2 instance using SSM Session Manager via a terminal-based fuzzy finder.
+    #>
+    param(
+        [string]$Pattern
+    )
+
+    if (-not (Test-Path $ssmCacheFile)) {
+        Write-Host -ForegroundColor Yellow "⏳ Local instance cache not found. Running 'Update-SsmCache' for you..."
+        Update-SsmCache
+
+        if (-not (Test-Path $ssmCacheFile)) {
+            Write-Host -ForegroundColor Red '❌ Cache update failed. Cannot proceed.'
+            return
+        }
+    }
+
+    $cache = Get-Content -Path $ssmCacheFile | ConvertFrom-Json
+    $connectableCache = $cache | Where-Object { $_.State -eq 'running' }
+    
+    $instanceMatches = $null
+    if ([string]::IsNullOrWhiteSpace($Pattern)) {
+        $instanceMatches = $connectableCache
+    }
+    else {
+        $instanceMatches = $connectableCache | Where-Object { $_.Name -like "*$Pattern*" }
+    }
+
+    $targetInstance = $null
+
+    if ($instanceMatches.Count -eq 0) {
+        $errorMessage = if ([string]::IsNullOrWhiteSpace($Pattern)) {
+            "❌ No *running* instances found in the cache. Run 'Update-SsmCache'."
+        } else {
+            "❌ No matching *running* instances found in the cache for pattern '$Pattern'."
+        }
+        Write-Host -ForegroundColor Red $errorMessage
+        return
+    }
+    elseif ($instanceMatches.Count -eq 1) {
+        $targetInstance = $instanceMatches
+        Write-Host -ForegroundColor Green "✅ Found unique instance: $($targetInstance.Name)"
+    }
+    else {
+        Write-Host -ForegroundColor Yellow "Multiple running instances found. Please choose one using the fuzzy finder:"
+        
+        # --- FIX: Added the InstanceId back to the formatted string for fzf ---
+        $selection = $instanceMatches | ForEach-Object { "{0,-40} {1,-15} {2,-15} {3,-10} {4}" -f $_.Name, $_.PrivateIpAddress, $_.Region, $_.State, $_.InstanceId } | fzf
+        
+        if ([string]::IsNullOrWhiteSpace($selection)) {
+            Write-Host -ForegroundColor Red "❌ Selection cancelled."
+            return
+        }
+        
+        # This logic now works correctly because the InstanceId is the last element
+        $selectedId = ($selection.Trim() -split '\s+')[-1]
+        
+        $targetInstance = $instanceMatches | Where-Object { $_.InstanceId -eq $selectedId }
+    }
+
+    if ($null -ne $targetInstance) {
+        Write-Host "🚀 Connecting to $($targetInstance.Name) ($($targetInstance.InstanceId))..."
+        aws ssm start-session --target $targetInstance.InstanceId --region $targetInstance.Region
+    }
+}
+
+# Argument completion
+# =============================================================================
+# Argument Completer for the custom 'ssm' function
+# =============================================================================
+# This makes Tab-completion work for `ssm <partial-name>`
+
+Register-ArgumentCompleter -CommandName 'ssm' -ScriptBlock {
+  param($wordToComplete, $commandAst, $cursorPosition)
+
+  # Define the path to the cache file, just like in the other functions
+  $ssmCacheFile = Join-Path -Path $HOME -ChildPath '.aws/ssm-cache.json'
+
+  # If the cache file doesn't exist, we can't offer any suggestions.
+  if (-not (Test-Path $ssmCacheFile)) {
+    # You could optionally return a suggestion to run the update command:
+    # return "'Cache is empty. Run Update-SsmCache'"
+    return 
+  }
+
+  # Read the JSON cache, get the list of instance names, and sort them
+  $instanceNames = Get-Content -Path $ssmCacheFile | ConvertFrom-Json | Select-Object -ExpandProperty Name | Sort-Object -Unique
+
+  # Find all names that contain the text the user has started typing
+  # The '*' wildcards mean it will match anywhere in the name, not just the start.
+  $instanceNames | Where-Object { $_ -like "*${wordToComplete}*" } | ForEach-Object {
+    # For names with spaces, PowerShell needs them to be quoted to be completed correctly.
+    if ($_ -match '\s') {
+      "'$_'"
+    }
+    else {
+      $_
+    }
+  }
+}
+
+
+#######################################################
 # failed trials and bits
 
 # Register-EngineEvent PowerShell.OnIdle -Action {
